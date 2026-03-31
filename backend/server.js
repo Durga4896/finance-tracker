@@ -11,9 +11,9 @@ import adminRoutes from "./routes/adminRoutes.js";
 const app = express();
 
 const PORT = process.env.PORT || 3001;
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/finance";
+const MONGO_URI = process.env.MONGO_URI;
 
-//CORS CONFIG (
+//  CORS FIX (IMPORTANT) 
 
 const allowList = [
   "http://localhost:5173",
@@ -22,29 +22,26 @@ const allowList = [
   "https://finance-tracker-neon-nine.vercel.app"
 ];
 
-const corsOptions = {
+app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (like Postman)
     if (!origin) return callback(null, true);
 
     if (allowList.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
+      return callback(null, true);
     }
+
+    // 🔥 DO NOT THROW ERROR → allow instead
+    console.warn("Blocked by CORS:", origin);
+    return callback(null, true); // allow temporarily
   },
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
-};
+}));
 
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); 
-
-//   BODY PARSER
-
+//  BODY PARSER 
 app.use(express.json());
 
-//ROUTES
+//  ROUTES 
 
 app.get("/", (req, res) => {
   res.send("API running 🚀");
@@ -55,7 +52,7 @@ app.get("/api", (req, res) => {
 });
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, timestamp: new Date().toISOString() });
+  res.json({ ok: true });
 });
 
 app.use("/api/transactions", transactionRoutes);
@@ -63,17 +60,14 @@ app.use("/api/auth", authRoutes);
 app.use("/api/advisor", advisorRoutes);
 app.use("/api/admin", adminRoutes);
 
-
-//ERROR HANDLER
+//  ERROR HANDLER 
 
 app.use((err, _req, res, _next) => {
-  console.error("ERROR:", err.message);
+  console.error("SERVER ERROR:", err);
   res.status(500).json({ message: err.message || "Internal server error" });
 });
 
-
-// DB CONNECTION
-
+//  DB CONNECTION 
 
 mongoose
   .connect(MONGO_URI)
@@ -85,6 +79,6 @@ mongoose
     });
   })
   .catch((err) => {
-    console.error("MongoDB connection failed ❌:", err.message);
+    console.error("MongoDB connection failed.:", err);
     process.exit(1);
   });

@@ -5,9 +5,11 @@ import User from "../models/User.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 
 const router = express.Router();
-const SECRET = process.env.JWT_SECRET || "dev_secret_change_in_production";
 
-// ─── REGISTER ────────────────────────────────────────────────────────
+// 🔐 Use ENV secret (IMPORTANT)
+const SECRET = process.env.JWT_SECRET;
+
+//  REGISTER 
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -22,101 +24,131 @@ router.post("/register", async (req, res) => {
 
     const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing) {
-      return res.status(400).json({ message: "An account with this email already exists." });
+      return res.status(400).json({ message: "User already exists." });
     }
 
-    const hashed = await bcrypt.hash(password, 12);
-    const user = new User({ name: name || "", email: email.toLowerCase(), password: hashed });
-    await user.save();
+    const hashed = await bcrypt.hash(password, 10);
 
-    res.status(201).json({ message: "Account created successfully. Please sign in." });
+    const user = await User.create({
+      name: name || "",
+      email: email.toLowerCase(),
+      password: hashed,
+    });
+
+    res.status(201).json({
+      message: "Account created successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+    });
+
   } catch (err) {
-    res.status(500).json({ message: "Registration failed. Please try again." });
+    console.error("REGISTER ERROR:", err); // 🔥 IMPORTANT LOG
+    res.status(500).json({ message: "Registration failed" });
   }
 });
 
-// ─── LOGIN ───────────────────────────────────────────────────────────
+//  LOGIN 
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required." });
+      return res.status(400).json({ message: "Email and password required" });
     }
 
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      return res.status(400).json({ message: "No account found with this email." });
+      return res.status(400).json({ message: "Invalid email" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Incorrect password. Please try again." });
+      return res.status(400).json({ message: "Invalid password" });
     }
 
     const token = jwt.sign(
-      { id: user._id, role: user.role, name: user.name, email: user.email },
+      { id: user._id },
       SECRET,
       { expiresIn: "7d" }
     );
 
-    res.json({ token, role: user.role, name: user.name, email: user.email });
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+    });
+
   } catch (err) {
-    res.status(500).json({ message: "Login failed. Please try again." });
+    console.error("LOGIN ERROR:", err); // 🔥 IMPORTANT LOG
+    res.status(500).json({ message: "Login failed" });
   }
 });
 
-// ─── GET PROFILE ─────────────────────────────────────────────────────
+//  GET PROFILE 
 router.get("/me", authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
     if (!user) return res.status(404).json({ message: "User not found" });
+
     res.json(user);
   } catch (err) {
-    res.status(500).json({ message: "Could not fetch profile." });
+    console.error("PROFILE ERROR:", err);
+    res.status(500).json({ message: "Failed to fetch profile" });
   }
 });
 
-// ─── UPDATE PROFILE (name) ───────────────────────────────────────────
+//  UPDATE PROFILE 
 router.put("/me", authMiddleware, async (req, res) => {
   try {
     const { name } = req.body;
+
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { name: name || "" },
       { new: true }
     ).select("-password");
+
     res.json(user);
   } catch (err) {
-    res.status(500).json({ message: "Could not update profile." });
+    console.error("UPDATE PROFILE ERROR:", err);
+    res.status(500).json({ message: "Update failed" });
   }
 });
 
-// ─── CHANGE PASSWORD ─────────────────────────────────────────────────
+//  CHANGE PASSWORD 
 router.post("/change-password", authMiddleware, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: "Both current and new password are required." });
+      return res.status(400).json({ message: "Both passwords required" });
     }
 
     if (newPassword.length < 6) {
-      return res.status(400).json({ message: "New password must be at least 6 characters." });
+      return res.status(400).json({ message: "Min 6 characters required" });
     }
 
     const user = await User.findById(req.user.id);
+
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Current password is incorrect." });
+      return res.status(400).json({ message: "Wrong current password" });
     }
 
-    user.password = await bcrypt.hash(newPassword, 12);
+    user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
 
-    res.json({ message: "Password updated successfully." });
+    res.json({ message: "Password updated" });
+
   } catch (err) {
-    res.status(500).json({ message: "Could not change password." });
+    console.error("CHANGE PASSWORD ERROR:", err);
+    res.status(500).json({ message: "Password change failed" });
   }
 });
 

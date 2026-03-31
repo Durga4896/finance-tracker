@@ -1,6 +1,6 @@
 import Transaction from "../models/Transaction.js";
 
-// ─── ADD TRANSACTION ────────────────────────────────────────────────
+//  ADD TRANSACTION 
 export const addTransaction = async (req, res) => {
   try {
     const { description, amount, category, paymentMethod, tags, date } = req.body;
@@ -28,7 +28,7 @@ export const addTransaction = async (req, res) => {
   }
 };
 
-// ─── GET TRANSACTIONS (with server-side filter/sort/search) ─────────
+//  GET TRANSACTIONS (with server-side filter/sort/search) 
 export const getTransactions = async (req, res) => {
   try {
     const { search, category, paymentMethod, sortBy, from, to, type } = req.query;
@@ -79,7 +79,7 @@ export const getTransactions = async (req, res) => {
   }
 };
 
-// ─── GET SUMMARY ────────────────────────────────────────────────────
+//  GET SUMMARY 
 export const getSummary = async (req, res) => {
   try {
     const transactions = await Transaction.find({ userId: req.user.id });
@@ -128,7 +128,7 @@ export const getSummary = async (req, res) => {
   }
 };
 
-// ─── UPDATE TRANSACTION ─────────────────────────────────────────────
+//  UPDATE TRANSACTION 
 export const updateTransaction = async (req, res) => {
   try {
     const transaction = await Transaction.findById(req.params.id);
@@ -160,7 +160,7 @@ export const updateTransaction = async (req, res) => {
   }
 };
 
-// ─── DELETE TRANSACTION ─────────────────────────────────────────────
+//  DELETE TRANSACTION 
 export const deleteTransaction = async (req, res) => {
   try {
     const transaction = await Transaction.findById(req.params.id);

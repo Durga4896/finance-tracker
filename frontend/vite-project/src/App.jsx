@@ -6,7 +6,7 @@ import {
 } from "recharts";
 import "./App.css";
 
-// ─── API SETUP ────────────────────────────────────────────────────────
+//  API SETUP 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001/api";
 
 const api = axios.create({ baseURL: API_BASE });
@@ -16,7 +16,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ─── CONSTANTS ────────────────────────────────────────────────────────
+// CONSTANTS 
 const CATEGORIES = ["Food", "Salary", "Housing", "Transport", "Shopping", "Bills", "Health", "Education", "Entertainment", "Others"];
 const PAYMENTS = ["Cash", "UPI", "Card", "Bank Transfer", "Wallet", "Net Banking"];
 const SORT_OPTIONS = [
@@ -49,7 +49,7 @@ const readHashTab = () => {
   return TAB_KEYS.includes(raw) ? raw : "overview";
 };
 
-// ─── TOAST HOOK ───────────────────────────────────────────────────────
+// TOAST HOOK 
 function useToast() {
   const [toasts, setToasts] = useState([]);
   const show = useCallback((msg, type = "info") => {
@@ -63,7 +63,7 @@ function useToast() {
   return { toasts, show };
 }
 
-// ─── TOAST UI ─────────────────────────────────────────────────────────
+//  TOAST UI 
 function ToastContainer({ toasts }) {
   const icons = { success: "✅", error: "❌", info: "💡" };
   return (
@@ -78,7 +78,7 @@ function ToastContainer({ toasts }) {
   );
 }
 
-// ─── CONFIRM MODAL ────────────────────────────────────────────────────
+// CONFIRM MODAL
 function ConfirmModal({ title, message, onConfirm, onCancel }) {
   return (
     <div className="modal-overlay" onClick={onCancel}>
@@ -94,7 +94,7 @@ function ConfirmModal({ title, message, onConfirm, onCancel }) {
   );
 }
 
-// ─── CHANGE PASSWORD MODAL ────────────────────────────────────────────
+// CHANGE PASSWORD MODAL 
 function ChangePasswordModal({ onClose, toast }) {
   const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [loading, setLoading] = useState(false);
@@ -149,7 +149,7 @@ function ChangePasswordModal({ onClose, toast }) {
   );
 }
 
-// ─── AUTH SCREEN ─────────────────────────────────────────────────────
+//  AUTH SCREEN 
 function AuthScreen({ onLogin, toast }) {
   const [mode, setMode] = useState("login");
   const [loading, setLoading] = useState(false);
@@ -227,7 +227,7 @@ function AuthScreen({ onLogin, toast }) {
   );
 }
 
-// ─── MAIN APP ─────────────────────────────────────────────────────────
+// MAIN APP 
 function App() {
   const { toasts, show: toast } = useToast();
 
@@ -254,7 +254,7 @@ function App() {
   const [adminUsers, setAdminUsers] = useState([]);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // ─── AI HELPERS ─────────────────────────────────────────────────────
+  //  AI HELPERS 
   const formatMessage = (text) => {
     if (!text) return "";
     const parts = text.split(/(\*\*.*?\*\*)/g);
@@ -270,7 +270,7 @@ function App() {
     setChatMessages([{ role: "assistant", text: "👋 Hi! I'm your AI Money Coach. Ready for a fresh start! Ask me anything about savings, budgets, or your transactions." }]);
   };
 
-  // ─── FETCH TRANSACTIONS ─────────────────────────────────────────────
+  // FETCH TRANSACTIONS 
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
     try {
@@ -291,7 +291,7 @@ function App() {
     } finally { setLoading(false); }
   }, [filters]);
 
-  // ─── FETCH SUMMARY ──────────────────────────────────────────────────
+  // FETCH SUMMARY
   const fetchSummary = useCallback(async () => {
     try {
       const res = await api.get("/transactions/summary");
@@ -303,7 +303,7 @@ function App() {
     if (isLoggedIn) { fetchTransactions(); fetchSummary(); }
   }, [fetchTransactions, fetchSummary, isLoggedIn]);
 
-  // ─── HASH TAB ROUTING ───────────────────────────────────────────────
+  // HASH TAB ROUTING 
   useEffect(() => {
     setActiveTab(readHashTab());
     const onHash = () => setActiveTab(readHashTab());
@@ -317,12 +317,12 @@ function App() {
     window.history.replaceState(null, "", `#${key}`);
   };
 
-  // ─── SCROLL CHAT TO BOTTOM ──────────────────────────────────────────
+  //  SCROLL CHAT TO BOTTOM 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages, chatLoading]);
 
-  // ─── AUTH HANDLERS ──────────────────────────────────────────────────
+  //  AUTH HANDLERS 
   const handleLogout = () => {
     localStorage.clear();
     setIsLoggedIn(false);
@@ -334,7 +334,7 @@ function App() {
     toast("Signed out successfully.", "info");
   };
 
-  // ─── FORM HANDLERS ──────────────────────────────────────────────────
+  //  FORM HANDLERS 
   const resetForm = () => {
     setForm({ description: "", amount: "", type: "expense", category: "Food", paymentMethod: "UPI", date: todayInput() });
     setEditingId(null);
@@ -398,7 +398,7 @@ function App() {
     }
   };
 
-  // ─── CSV EXPORT ─────────────────────────────────────────────────────
+  //  CSV EXPORT 
   const exportCSV = () => {
     if (!transactions.length) { toast("No transactions to export.", "info"); return; }
     const header = ["Description", "Type", "Amount (₹)", "Category", "Payment Method", "Date"];
@@ -421,7 +421,7 @@ function App() {
     toast("CSV exported successfully! 📁", "success");
   };
 
-  // ─── AI ADVISOR ─────────────────────────────────────────────────────
+  //  AI ADVISOR 
   const handleAdvisorSend = async (eOrMsg) => {
     if (eOrMsg && eOrMsg.preventDefault) eOrMsg.preventDefault();
 
@@ -446,10 +446,10 @@ function App() {
     }
   };
 
-  // ─── RESET FILTERS ──────────────────────────────────────────────────
+  //  RESET FILTERS 
   const resetFilters = () => setFilters({ search: "", category: "All", paymentMethod: "All", sortBy: "latest", type: "all", from: "", to: "" });
 
-  // ─── COMPUTED DATA ──────────────────────────────────────────────────
+  //  COMPUTED DATA 
   const creditedRows = useMemo(() => transactions.filter((t) => Number(t.amount) > 0), [transactions]);
   const debitedRows = useMemo(() => transactions.filter((t) => Number(t.amount) < 0), [transactions]);
 
@@ -464,7 +464,7 @@ function App() {
 
   const topCategory = categoryData[0] || null;
 
-  // ─── ADMIN FETCH ────────────────────────────────────────────────────
+  //  ADMIN FETCH 
   const fetchAdminUsers = useCallback(async () => {
     try {
       const res = await api.get("/admin/users");
@@ -476,7 +476,7 @@ function App() {
     if (isLoggedIn && role === "admin") fetchAdminUsers();
   }, [isLoggedIn, role, fetchAdminUsers]);
 
-  // ─── FLASH CARD VALUES ──────────────────────────────────────────────
+  //  FLASH CARD VALUES 
   const flashCards = TAB_CONFIG.map((t) => {
     const vals = {
       overview: formatINR(summary.balance),
@@ -490,11 +490,9 @@ function App() {
     return { ...t, value: vals[t.key] };
   });
 
-  // ═══════════════════════════════════════════════════════════════════
   //  TAB RENDERERS
-  // ═══════════════════════════════════════════════════════════════════
 
-  // ── OVERVIEW ──────────────────────────────────────────────────────
+  //  OVERVIEW 
   const renderOverview = () => (
     <section className="tab-panel">
       <div className="panel-grid">
@@ -604,7 +602,7 @@ function App() {
     </section>
   );
 
-  // ── ADD / EDIT ─────────────────────────────────────────────────────
+  //  ADD / EDIT 
   const renderAdd = () => (
     <section className="tab-panel">
       <div className="panel-grid">
@@ -733,7 +731,7 @@ function App() {
     </section>
   );
 
-  // ── HISTORY / CHARTS ───────────────────────────────────────────────
+  //  HISTORY / CHARTS 
   const renderHistory = () => (
     <section className="tab-panel">
       <div className="charts-grid">
@@ -805,7 +803,7 @@ function App() {
     </section>
   );
 
-  // ── SIMPLE TABLE (INCOME / EXPENSE) ───────────────────────────────
+  //  SIMPLE TABLE (INCOME / EXPENSE) 
   const renderSimpleTable = (rows, type) => {
     const isIncome = type === "credited";
     return (
@@ -842,7 +840,7 @@ function App() {
     );
   };
 
-  // ── AI COACH ──────────────────────────────────────────────────────
+  //  AI COACH 
   const renderCoach = () => (
     <section className="tab-panel">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -893,7 +891,7 @@ function App() {
     </section>
   );
 
-  // ── ALL TRANSACTIONS TABLE ─────────────────────────────────────────
+  //  ALL TRANSACTIONS TABLE 
   const renderTransactions = () => (
     <section className="tab-panel">
       <article className="panel table-panel">
@@ -948,7 +946,7 @@ function App() {
     </section>
   );
 
-  // ─── RENDER ACTIVE TAB ───────────────────────────────────────────────
+  //  RENDER ACTIVE TAB 
   const renderActiveTab = () => {
     switch (activeTab) {
       case "overview": return renderOverview();
@@ -962,7 +960,7 @@ function App() {
     }
   };
 
-  // ─── AUTH GATE ───────────────────────────────────────────────────────
+  //  AUTH GATE 
   if (!isLoggedIn) {
     return (
       <>
@@ -972,7 +970,7 @@ function App() {
     );
   }
 
-  // ─── MAIN DASHBOARD ──────────────────────────────────────────────────
+  //  MAIN DASHBOARD 
   return (
     <>
       <ToastContainer toasts={toasts} />

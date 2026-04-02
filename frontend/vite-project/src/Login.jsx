@@ -1,6 +1,8 @@
 import { useState } from "react";
 import axios from "axios";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001/api";
+
 function Login({ setIsLoggedIn }) {
   const [isRegister, setIsRegister] = useState(false);
 
@@ -19,7 +21,7 @@ function Login({ setIsLoggedIn }) {
       if (isRegister) {
         // 🔐 REGISTER
         await axios.post(
-          "http://localhost:3001/api/auth/register",
+          `${API_BASE}/auth/register`,
           form
         );
         alert("Registered successfully! Now login.");
@@ -27,7 +29,7 @@ function Login({ setIsLoggedIn }) {
       } else {
         // 🔐 LOGIN
         const res = await axios.post(
-          "http://localhost:3001/api/auth/login",
+          `${API_BASE}/auth/login`,
           form
         );
 

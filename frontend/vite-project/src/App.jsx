@@ -4,6 +4,7 @@ import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, Line, Area, AreaChart
 } from "recharts";
+import "./ModernApp.css";
 import "./App.css";
 
 //  API SETUP 
@@ -29,13 +30,13 @@ const SORT_OPTIONS = [
 const CHART_COLORS = ["#6c63ff", "#00d9b9", "#ff5252", "#ffb74d", "#64b5f6", "#f06292", "#81c784", "#ff8a65"];
 
 const TAB_CONFIG = [
-  { key: "overview", label: "Overview", icon: "🏠", subtitle: "Dashboard", desc: "Live stats" },
-  { key: "add", label: "Add", icon: "✚", subtitle: "Record", desc: "New entry" },
-  { key: "history", label: "Analytics", icon: "📊", subtitle: "Charts", desc: "Trends" },
-  { key: "credited", label: "Income", icon: "📈", subtitle: "Credited", desc: "Earnings" },
-  { key: "debited", label: "Expenses", icon: "📉", subtitle: "Debited", desc: "Spending" },
-  { key: "coach", label: "AI Coach", icon: "🤖", subtitle: "Advisor", desc: "Get tips" },
-  { key: "transactions", label: "Transactions", icon: "📋", subtitle: "All records", desc: "CRUD" }
+  { key: "overview", label: "Dashboard", icon: "🏠" },
+  { key: "transactions", label: "Transactions", icon: "📋" },
+  { key: "add", label: "Add Entry", icon: "✚" },
+  { key: "history", label: "Analytics", icon: "📊" },
+  { key: "credited", label: "Income", icon: "📈" },
+  { key: "debited", label: "Expenses", icon: "📉" },
+  { key: "coach", label: "AI Coach", icon: "🤖" },
 ];
 
 const TAB_KEYS = TAB_CONFIG.map((t) => t.key);
@@ -43,6 +44,29 @@ const TAB_KEYS = TAB_CONFIG.map((t) => t.key);
 const formatINR = (v) => `₹${Math.abs(Number(v || 0)).toLocaleString("en-IN")}`;
 const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 const todayInput = () => new Date().toISOString().split("T")[0];
+const readResetStateFromUrl = () => {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token") || "";
+  const email = params.get("email") || "";
+  const mode = params.get("mode");
+
+  if (mode === "reset" && token && email) {
+    return { screen: "reset", token, email };
+  }
+
+  return { screen: "login", token: "", email };
+};
+
+const clearResetSearchParams = () => {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("mode");
+  url.searchParams.delete("token");
+  url.searchParams.delete("email");
+
+  const nextSearch = url.searchParams.toString();
+  const nextUrl = `${url.pathname}${nextSearch ? `?${nextSearch}` : ""}${url.hash}`;
+  window.history.replaceState(null, "", nextUrl);
+};
 
 const readHashTab = () => {
   const raw = window.location.hash.replace("#", "").trim().toLowerCase();
@@ -94,10 +118,51 @@ function ConfirmModal({ title, message, onConfirm, onCancel }) {
   );
 }
 
+function PasswordField({
+  id,
+  label,
+  placeholder,
+  value,
+  onChange,
+  visible,
+  onToggle,
+  autoComplete = "current-password",
+  readOnly = false
+}) {
+  return (
+    <div className="form-group">
+      <label htmlFor={id}>{label}</label>
+      <div className="password-input-wrap">
+        <input
+          id={id}
+          type={visible ? "text" : "password"}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          autoComplete={autoComplete}
+          readOnly={readOnly}
+          required
+        />
+        <button
+          type="button"
+          className="password-toggle-btn"
+          onClick={onToggle}
+          aria-label={visible ? `Hide ${label}` : `Show ${label}`}
+          aria-pressed={visible}
+        >
+          {visible ? "Hide" : "Show"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // CHANGE PASSWORD MODAL 
 function ChangePasswordModal({ onClose, toast }) {
   const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [visible, setVisible] = useState({ currentPassword: false, newPassword: false, confirmPassword: false });
   const [loading, setLoading] = useState(false);
+  const toggleVisible = (key) => setVisible((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -125,17 +190,22 @@ function ChangePasswordModal({ onClose, toast }) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h3>🔒 Change Password</h3>
         <form className="password-form" onSubmit={handleSubmit}>
-          {[["currentPassword", "Current Password", "password"], ["newPassword", "New Password", "password"], ["confirmPassword", "Confirm New Password", "password"]].map(([key, label, type]) => (
-            <div className="form-group" key={key}>
-              <label>{label}</label>
-              <input
-                type={type}
-                placeholder={`Enter ${label.toLowerCase()}`}
-                value={form[key]}
-                onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
-                required
-              />
-            </div>
+          {[
+            ["currentPassword", "Current Password", "Enter current password", "current-password"],
+            ["newPassword", "New Password", "Enter new password", "new-password"],
+            ["confirmPassword", "Confirm New Password", "Re-enter new password", "new-password"]
+          ].map(([key, label, placeholder, autoComplete]) => (
+            <PasswordField
+              key={key}
+              id={key}
+              label={label}
+              placeholder={placeholder}
+              value={form[key]}
+              onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
+              visible={visible[key]}
+              onToggle={() => toggleVisible(key)}
+              autoComplete={autoComplete}
+            />
           ))}
           <div className="modal-actions" style={{ marginTop: 8 }}>
             <button type="button" className="ghost-btn" style={{ width: "auto", padding: "10px 20px" }} onClick={onClose}>Cancel</button>
@@ -151,32 +221,152 @@ function ChangePasswordModal({ onClose, toast }) {
 
 //  AUTH SCREEN 
 function AuthScreen({ onLogin, toast }) {
-  const [mode, setMode] = useState("login");
+  const initialResetState = useMemo(() => readResetStateFromUrl(), []);
+  const [screen, setScreen] = useState(initialResetState.screen);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [authForm, setAuthForm] = useState({ name: "", email: initialResetState.email || "", password: "" });
+  const [forgotEmail, setForgotEmail] = useState(initialResetState.email || "");
+  const [forgotNotice, setForgotNotice] = useState("");
+  const [forgotPreviewUrl, setForgotPreviewUrl] = useState("");
+  const [resetForm, setResetForm] = useState({
+    email: initialResetState.email || "",
+    token: initialResetState.token || "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+  const [visible, setVisible] = useState({
+    authPassword: false,
+    resetPassword: false,
+    resetConfirmPassword: false
+  });
 
-  const upd = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const setScreenMode = (nextScreen) => {
+    if (nextScreen !== "reset") clearResetSearchParams();
+    if (nextScreen !== "forgot") {
+      setForgotNotice("");
+      setForgotPreviewUrl("");
+    }
+    setScreen(nextScreen);
+  };
 
-  const handleSubmit = async (e) => {
+  const updAuth = (key, value) => setAuthForm((prev) => ({ ...prev, [key]: value }));
+  const updReset = (key, value) => setResetForm((prev) => ({ ...prev, [key]: value }));
+  const toggleVisible = (key) => setVisible((prev) => ({ ...prev, [key]: !prev[key] }));
+  const openForgotPassword = () => {
+    setForgotEmail(authForm.email);
+    setScreenMode("forgot");
+  };
+  const backToLogin = (email = "") => {
+    setScreenMode("login");
+    setAuthForm((prev) => ({ ...prev, email: email || prev.email, password: "" }));
+  };
+
+  useEffect(() => {
+    const syncResetState = () => {
+      const nextState = readResetStateFromUrl();
+      if (nextState.screen !== "reset") return;
+
+      setScreen("reset");
+      setAuthForm((prev) => ({ ...prev, email: nextState.email, password: "" }));
+      setForgotEmail(nextState.email);
+      setForgotNotice("");
+      setForgotPreviewUrl("");
+      setResetForm({
+        email: nextState.email,
+        token: nextState.token,
+        newPassword: "",
+        confirmPassword: ""
+      });
+    };
+
+    syncResetState();
+    window.addEventListener("popstate", syncResetState);
+    return () => window.removeEventListener("popstate", syncResetState);
+  }, []);
+
+  const handleAuthSubmit = async (e) => {
     e.preventDefault();
-    if (!form.email || !form.password) { toast("Email and password are required.", "error"); return; }
+    if (!authForm.email || !authForm.password) {
+      toast("Email and password are required.", "error");
+      return;
+    }
+
     setLoading(true);
     try {
-      if (mode === "register") {
-        await api.post("/auth/register", form);
+      if (screen === "register") {
+        await api.post("/auth/register", authForm);
         toast("Account created! Please sign in.", "success");
-        setMode("login");
-        setForm((p) => ({ ...p, password: "" }));
+        backToLogin(authForm.email);
       } else {
-        const res = await api.post("/auth/login", form);
+        const res = await api.post("/auth/login", authForm);
+        const loggedInUser = res.data.user || {};
+        const nextRole = res.data.role || loggedInUser.role || "user";
+        const nextName = res.data.name || loggedInUser.name || "";
+
+        clearResetSearchParams();
         localStorage.setItem("token", res.data.token);
-        localStorage.setItem("role", res.data.role || "user");
-        localStorage.setItem("userName", res.data.name || "");
-        onLogin(res.data.role || "user", res.data.name || "");
+        localStorage.setItem("role", nextRole);
+        localStorage.setItem("userName", nextName);
+        onLogin(nextRole, nextName);
       }
     } catch (err) {
       toast(err.response?.data?.message || "Authentication failed.", "error");
     } finally { setLoading(false); }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail) {
+      toast("Email is required.", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await api.post("/auth/forgot-password", { email: forgotEmail });
+      setForgotNotice(res.data.message || "If an account with that email exists, a password reset link has been sent.");
+      setForgotPreviewUrl(res.data.previewUrl || "");
+      if (res.data.previewUrl) {
+        toast("SMTP is not configured yet. The reset link was logged by the backend for local testing.", "info");
+      } else {
+        toast(res.data.message || "Password reset email sent.", "success");
+      }
+    } catch (err) {
+      toast(err.response?.data?.message || "Failed to send reset email.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+
+    if (resetForm.newPassword !== resetForm.confirmPassword) {
+      toast("New passwords do not match.", "error");
+      return;
+    }
+
+    if (resetForm.newPassword.length < 6) {
+      toast("Password must be at least 6 characters.", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await api.post("/auth/reset-password", {
+        email: resetForm.email,
+        token: resetForm.token,
+        newPassword: resetForm.newPassword
+      });
+
+      toast(res.data.message || "Password reset successful.", "success");
+      setResetForm((prev) => ({ ...prev, newPassword: "", confirmPassword: "" }));
+      backToLogin(resetForm.email);
+    } catch (err) {
+      toast(err.response?.data?.message || "Failed to reset password.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -187,41 +377,140 @@ function AuthScreen({ onLogin, toast }) {
           <span className="auth-logo-text">FinTrack Pro</span>
         </div>
 
-        <h1>{mode === "login" ? "Welcome back 👋" : "Create account"}</h1>
+        <h1>
+          {screen === "login" && "Welcome back 👋"}
+          {screen === "register" && "Create account"}
+          {screen === "forgot" && "Forgot password"}
+          {screen === "reset" && "Reset password"}
+        </h1>
         <p className="subtext">
-          {mode === "login"
-            ? "Sign in to your personal finance dashboard."
-            : "Start tracking income & expenses intelligently."}
+          {screen === "login" && "Sign in to your personal finance dashboard."}
+          {screen === "register" && "Start tracking income and expenses intelligently."}
+          {screen === "forgot" && "Enter your email address and we’ll send you a secure reset link."}
+          {screen === "reset" && "Choose a new password for your account to get back in securely."}
         </p>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          {mode === "register" && (
+        {(screen === "login" || screen === "register") && (
+          <form className="auth-form" onSubmit={handleAuthSubmit}>
+            {screen === "register" && (
+              <div className="form-group">
+                <label>Full Name</label>
+                <input type="text" placeholder="Your full name" value={authForm.name} onChange={(e) => updAuth("name", e.target.value)} />
+              </div>
+            )}
             <div className="form-group">
-              <label>Full Name</label>
-              <input type="text" placeholder="Your full name" value={form.name} onChange={(e) => upd("name", e.target.value)} />
+              <label>Email</label>
+              <input type="email" placeholder="you@example.com" value={authForm.email} onChange={(e) => updAuth("email", e.target.value)} required />
             </div>
-          )}
-          <div className="form-group">
-            <label>Email</label>
-            <input type="email" placeholder="you@example.com" value={form.email} onChange={(e) => upd("email", e.target.value)} required />
-          </div>
-          <div className="form-group">
-            <label>Password</label>
-            <input type="password" placeholder="Min. 6 characters" value={form.password} onChange={(e) => upd("password", e.target.value)} required />
-          </div>
-          <button type="submit" className="primary-btn" disabled={loading}>
-            {loading ? "Please wait..." : mode === "login" ? "Sign In →" : "Create Account →"}
-          </button>
-        </form>
+            <PasswordField
+              id="auth-password"
+              label="Password"
+              placeholder="Min. 6 characters"
+              value={authForm.password}
+              onChange={(e) => updAuth("password", e.target.value)}
+              visible={visible.authPassword}
+              onToggle={() => toggleVisible("authPassword")}
+              autoComplete={screen === "login" ? "current-password" : "new-password"}
+            />
+            {screen === "login" && (
+              <button type="button" className="auth-link-btn" onClick={openForgotPassword}>
+                Forgot password?
+              </button>
+            )}
+            <button type="submit" className="primary-btn" disabled={loading}>
+              {loading ? "Please wait..." : screen === "login" ? "Sign In →" : "Create Account →"}
+            </button>
+          </form>
+        )}
 
-        <button
-          type="button"
-          className="switch-btn"
-          style={{ marginTop: 12 }}
-          onClick={() => setMode(mode === "login" ? "register" : "login")}
-        >
-          {mode === "login" ? "New here? Create an account" : "Already have an account? Sign in"}
-        </button>
+        {screen === "forgot" && (
+          <form className="auth-form" onSubmit={handleForgotPassword}>
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                required
+              />
+            </div>
+            {forgotNotice && <p className="success-text auth-feedback">{forgotNotice}</p>}
+            {forgotPreviewUrl && (
+              <a className="auth-preview-link" href={forgotPreviewUrl}>
+                Open Reset Page →
+              </a>
+            )}
+            <button type="submit" className="primary-btn" disabled={loading}>
+              {loading ? "Sending link..." : "Send Reset Link →"}
+            </button>
+          </form>
+        )}
+
+        {screen === "reset" && (
+          <form className="auth-form" onSubmit={handleResetPassword}>
+            <div className="form-group">
+              <label>Email</label>
+              <input type="email" value={resetForm.email} readOnly />
+            </div>
+            <PasswordField
+              id="reset-password"
+              label="New Password"
+              placeholder="Enter new password"
+              value={resetForm.newPassword}
+              onChange={(e) => updReset("newPassword", e.target.value)}
+              visible={visible.resetPassword}
+              onToggle={() => toggleVisible("resetPassword")}
+              autoComplete="new-password"
+            />
+            <PasswordField
+              id="reset-confirm-password"
+              label="Confirm New Password"
+              placeholder="Re-enter new password"
+              value={resetForm.confirmPassword}
+              onChange={(e) => updReset("confirmPassword", e.target.value)}
+              visible={visible.resetConfirmPassword}
+              onToggle={() => toggleVisible("resetConfirmPassword")}
+              autoComplete="new-password"
+            />
+            <button type="submit" className="primary-btn" disabled={loading}>
+              {loading ? "Updating password..." : "Reset Password →"}
+            </button>
+          </form>
+        )}
+
+        {(screen === "login" || screen === "register") && (
+          <button
+            type="button"
+            className="switch-btn"
+            style={{ marginTop: 12 }}
+            onClick={() => setScreenMode(screen === "login" ? "register" : "login")}
+          >
+            {screen === "login" ? "New here? Create an account" : "Already have an account? Sign in"}
+          </button>
+        )}
+
+        {screen === "forgot" && (
+          <button
+            type="button"
+            className="switch-btn"
+            style={{ marginTop: 12 }}
+            onClick={() => backToLogin(forgotEmail)}
+          >
+            Back to sign in
+          </button>
+        )}
+
+        {screen === "reset" && (
+          <div className="auth-action-stack">
+            <button type="button" className="switch-btn" onClick={() => { setForgotEmail(resetForm.email); setScreenMode("forgot"); }}>
+              Request a new link
+            </button>
+            <button type="button" className="ghost-btn" onClick={() => backToLogin(resetForm.email)}>
+              Back to sign in
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -489,6 +778,9 @@ function App() {
     };
     return { ...t, value: vals[t.key] };
   });
+
+  const displayName = userName?.trim() || "Finance User";
+  const userInitial = displayName.charAt(0).toUpperCase();
 
   //  TAB RENDERERS
 
@@ -1000,32 +1292,39 @@ function App() {
         <header className="topbar">
           <div className="topbar-brand">
             <div className="brand-icon">💰</div>
-            <div>
-              <p className="kicker">Next-Gen Management</p>
-              <h2>FinTrack Pro</h2>
+            <div className="brand-copy">
+              <p className="kicker">Personal Finance Workspace</p>
+              <div className="brand-title-row">
+                <h2>FinTrack Pro</h2>
+                <span className="brand-status">Live</span>
+              </div>
+              <p className="brand-subtitle">
+                Track spending, review insights, and manage your account from one clean workspace.
+              </p>
             </div>
           </div>
 
           <div className="top-actions">
-            <div className="user-info">
-              {userName && (
-                <div className="user-name">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-3)" }}>
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                  </svg>
-                  {userName}
+            <div className="account-card">
+              <div className="account-avatar">{userInitial}</div>
+              <div className="user-info">
+                <div className="user-meta-row">
+                  <span className="user-greeting">Signed in as</span>
+                  <span className={`role-badge ${role}`}>{role === "admin" ? "ADMIN" : "USER"}</span>
                 </div>
-              )}
-              <span className={`role-badge ${role}`}>{role === "admin" ? "ADMIN" : "USER"}</span>
+                <div className="user-name">{displayName}</div>
+              </div>
             </div>
-            <button className="icon-btn" title="Change Password" onClick={() => setShowChangePassword(true)}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-              </svg>
-            </button>
-            <button className="logout-btn" onClick={handleLogout}>Sign Out</button>
+            <div className="topbar-buttons">
+              <button className="topbar-btn" title="Change Password" onClick={() => setShowChangePassword(true)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                Password
+              </button>
+              <button className="logout-btn" onClick={handleLogout}>Sign Out</button>
+            </div>
           </div>
         </header>
 
